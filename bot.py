@@ -40,9 +40,9 @@ def inline(call):
         # CHECK IF ID IS RIGHT
         if call.data == result[0]:
             print("BARCODE")
-            res_str = ""
+            new_message = ""
 
-            res_str = 'Ціни на обрану корзину: ('
+            new_message = 'Ціни на обрану корзину: ('
 
             # FROM BARCODE TO PRICE
             for barcode in barcode_with_result(call.data):
@@ -52,9 +52,9 @@ def inline(call):
 
                 # FIXME: FOR LARGE LIST
                 # ANCIENT MAGIC ????
-                res_str += product_name[17:-14] + ' '
+                new_message += product_name[17:-14] + ' '
 
-            res_str += ')' + '\n'
+            new_message += ')' + '\n'
 
             for barcode in barcode_with_result(call.data):
                 product = tmp_geting_data(barcode[1])
@@ -63,17 +63,13 @@ def inline(call):
                 # FIXME: FOR LARGE LIST
                 for price in price_list:
                     # FIXME: REWRITE WITH %
-                    res_str += price["name"] + ' - ' + price["price"] + "\n"
+                    new_message += price["name"] + ' - ' + price["price"] + "\n"
 
 
             # FIXME: RENAME RES_STR TO NEW MESSAGE
-            new_message = res_str
-            print(call.message.text)
-            print(new_message)
-            print(set(call.message.text.split(' ')) == set(new_message.split(' ')))
+            new_message = new_message[:len(new_message)-1]
 
-
-            if not (call.message.text is new_message):
+            if len(list(filter(lambda xy: xy[0] != xy[1], zip(new_message, call.message.text)))) != 0:
                 bot.edit_message_text(chat_id=call.message.chat.id,
                                       message_id=call.message.message_id, text=new_message,
                                       reply_markup=get_update_markup(call.data))
