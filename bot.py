@@ -215,20 +215,27 @@ def compare_price(message):
         if item.chat_id == message.chat.id:
             # print(item.basket_list)
             # print(item.barcode_list)
+            try:
+                longitude = location_message.location.longitude
+                latitude = location_message.location.latitude
+                location = str(longitude) + ',' + str(latitude)
+                # print(location)
 
-            longitude = location_message.location.longitude
-            latitude = location_message.location.latitude
-            location = str(longitude) + ',' + str(latitude)
-            # print(location)
+                r_id = set_result(message, location)
+                associate_brcd_res(r_id, item.barcode_list)
+                result = item.get_result()
 
-            r_id = set_result(message, location)
-            associate_brcd_res(r_id, item.barcode_list)
+                # Add extra inline markup with id as result_id
+                bot.send_message(message.chat.id, result, reply_markup=get_update_markup(r_id))
+                basket_list.remove(item)
+            except:
+                markup = types.ReplyKeyboardMarkup()
+                add_user_to_db(message)
+                markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації.", request_location=True))
+                bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація", reply_markup=markup)
+
             # print(r_id)
-            result = item.get_result()
 
-            # Add extra inline markup with id as result_id
-            bot.send_message(message.chat.id, result, reply_markup=get_update_markup(r_id))
-            basket_list.remove(item)
             # print(r_id)
             # print(get_user_results(message))
 while True:
