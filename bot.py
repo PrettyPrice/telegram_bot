@@ -29,7 +29,7 @@ location_message = None
 # JUST RETURN MARKUP
 def get_update_markup(id):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text="Оновити", callback_data=id))
+    keyboard.add(types.InlineKeyboardButton(text="Оновити ↩️", callback_data=id))
     return keyboard
 
 # HANDEL ALL UPDATE QUERY
@@ -40,34 +40,12 @@ def inline(call):
         # CHECK IF ID IS RIGHT
         if call.data == result[0]:
             print("BARCODE")
-            new_message = ""
-
-            new_message = 'Ціни на обрану корзину: ('
-
-            # FROM BARCODE TO PRICE
+            barcodes = []
             for barcode in barcode_with_result(call.data):
+                barcodes.append(barcode[1])
 
-                product = tmp_geting_data(barcode[1])
-                product_name = product['product_name']
-
-                # FIXME: FOR LARGE LIST
-                # ANCIENT MAGIC ????
-                new_message += product_name[17:-14] + ' '
-
-            new_message += ')' + '\n'
-
-            for barcode in barcode_with_result(call.data):
-                product = tmp_geting_data(barcode[1])
-                price_list = product['price_list']
-
-                # FIXME: FOR LARGE LIST
-                for price in price_list:
-                    # FIXME: REWRITE WITH %
-                    new_message += price["name"] + ' - ' + price["price"] + "\n"
-
-
-            # FIXME: RENAME RES_STR TO NEW MESSAGE
-            new_message = new_message[:len(new_message)-1]
+            print(barcodes)
+            new_message = Basket.get_result_with_barcode(barcodes)
 
             if len(list(filter(lambda xy: xy[0] != xy[1], zip(new_message, call.message.text)))) != 0:
                 bot.edit_message_text(chat_id=call.message.chat.id,
@@ -87,7 +65,7 @@ def handle_help(message):
 @bot.message_handler(commands=['info'])
 def handle_info(message):
     bot.send_message(
-        message.chat.id, "PrettyPrice - Розпочни економити вже зараз, я допоможу тобі знайти де купувати за найвигіднішою ціною.")
+        message.chat.id, "HippoPrice - Розпочни економити вже зараз, я допоможу тобі знайти де купувати за найвигіднішою ціною.")
 
 @bot.message_handler(content_types=['location'])
 def handle_location(message):
@@ -101,8 +79,8 @@ def handle_location(message):
         longitude = message.location.longitude
         latitude = message.location.latitude
         markup = types.ReplyKeyboardMarkup()
-        markup.add(types.KeyboardButton(u'Порівняти ціну на товар'))
-        bot.send_message(message.chat.id, u"Оберіть Опцію", reply_markup=markup)
+        markup.add(types.KeyboardButton(u'Порівняти ціну на товар 👛'))
+        bot.send_message(message.chat.id, u"Оберіть опцію 📱", reply_markup=markup)
         mp.track(message.chat.id, 'Location', {
             'u_id': message.from_user.id,
             'u_name': message.from_user.first_name + ' ' + message.from_user.last_name,
@@ -129,12 +107,12 @@ def handle_start(message):
             # 'u_name': message.from_user.first_name + ' ' + message.from_user.last_name)
         markup = types.ReplyKeyboardMarkup()
         add_user_to_db(message)
-        markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації.", request_location=True))
-        bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація", reply_markup=markup)
+        markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації 🗺️", request_location=True))
+        bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація що підібрати вірний магазин 🛰️", reply_markup=markup)
     except Exception as err:
         logger.write_logs(handle_start.__name__, err)
 
-@bot.message_handler(func=lambda message: u'Порівняти ціну на товар' == message.text or u'Додати ще товар' == message.text)
+@bot.message_handler(func=lambda message: u'Порівняти ціну на товар 👛' == message.text or u'Додати ще товар ➕' == message.text)
 def compare_price(message):
     markup = types.ReplyKeyboardMarkup()
     # for basket in basket_list:
@@ -151,9 +129,9 @@ def compare_price(message):
         # 'longitude': message.location.longitude,
         # 'latitude': message.location.latitude
     })
-    markup.add(types.KeyboardButton(u'Додати ще товар'))
-    markup.add(types.KeyboardButton(u'Порівняти'))
-    bot.send_message(message.chat.id, u"Загрузуть фото штрих-коду", reply_markup=markup)
+    markup.add(types.KeyboardButton(u'Додати ще товар ➕'))
+    markup.add(types.KeyboardButton(u'Порівняти 🔍'))
+    bot.send_message(message.chat.id, u"Завантажте фото штрих-коду 📷", reply_markup=markup)
 
 @bot.message_handler(content_types=['photo'])
 def handle_file(message):
@@ -168,10 +146,10 @@ def handle_file(message):
 
                 f.write(file.content)
                 decoded_barcode=decode(Image.open(dir_path+'/imgs/%s_%s.png' % (file_id, message.chat.id)))
-                bot.send_message(message.chat.id, u"Оберіть Опцію")
+                bot.send_message(message.chat.id, u"Оберіть опцію 📱")
 
                 if not decoded_barcode:
-                    bot.send_message(message.chat.id, u'Штрих код не знайдено, спробуйте ще раз')
+                    bot.send_message(message.chat.id, u'Штрих код не знайдено, спробуйте ще раз 😞')
                 else:
                     res = tmp_geting_data(str(int(decoded_barcode[0].data)))
                     for basket in basket_list:
@@ -196,14 +174,14 @@ def handle_file(message):
     except Exception as err:
         logger.write_logs(handle_file.__name__, err)
 
-@bot.message_handler(func=lambda message: u'Порівняти' == message.text)
+@bot.message_handler(func=lambda message: u'Порівняти 🔍' == message.text)
 def compare_price(message):
     markup = types.ReplyKeyboardMarkup()
 
     # print(basket_list)
 
-    markup.add(types.KeyboardButton(u'Порівняти ціну на товар'))
-    bot.send_message(message.chat.id, u"Очікуйте результату", reply_markup=markup)
+    markup.add(types.KeyboardButton(u'Порівняти ціну на товар 👛'))
+    bot.send_message(message.chat.id, u"Очікуйте результату 🕰️", reply_markup=markup)
     time.sleep(5)
 
     # print(basket_list)
@@ -231,8 +209,8 @@ def compare_price(message):
             except:
                 markup = types.ReplyKeyboardMarkup()
                 add_user_to_db(message)
-                markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації.", request_location=True))
-                bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація", reply_markup=markup)
+                markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації 🗺️", request_location=True))
+                bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація що підібрати вірний магазин 🛰️", reply_markup=markup)
 
             # print(r_id)
 
