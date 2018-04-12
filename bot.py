@@ -18,7 +18,7 @@ from mixpanel import Mixpanel
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 bot = telebot.TeleBot(TOKEN)
-telebot.logger.setLevel(logging.DEBUG)
+# telebot.logger.setLevel(logging.DEBUG)
 
 logger = Logger()
 basket_list = []
@@ -30,6 +30,11 @@ location_message = None
 def get_update_markup(id):
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text="Оновити ↩️", callback_data=id))
+    return keyboard
+
+def get_price(id):
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text="Дізнатись ціну. 🔍", callback_data=id))
     return keyboard
 
 # HANDEL ALL UPDATE QUERY
@@ -70,6 +75,7 @@ def handle_info(message):
 @bot.message_handler(content_types=['location'])
 def handle_location(message):
     try:
+
         # TODO: TEST FOR MULTI USERS !!!
         # FIXME: HIDDEN BUG ?
         global location_message
@@ -78,15 +84,16 @@ def handle_location(message):
         location_message = message
         longitude = message.location.longitude
         latitude = message.location.latitude
-        markup = types.ReplyKeyboardMarkup()
-        markup.add(types.KeyboardButton(u'Порівняти ціну на товар 👛'))
-        bot.send_message(message.chat.id, u"Оберіть опцію 📱", reply_markup=markup)
+        markup = types.ReplyKeyboardRemove(selective=False)
+        # markup.add(types.KeyboardButton(u'Дізнатись ціни на товар 👛'))
+        bot.send_message(message.chat.id, u"Сфотографуй штрих-код товару та завантажте його сюди. 📷", reply_markup=markup)
         mp.track(message.chat.id, 'Location', {
-            'u_id': message.from_user.id,
-            'u_name': message.from_user.first_name + ' ' + message.from_user.last_name,
             'longitude': message.location.longitude,
             'latitude': message.location.latitude
         })
+        tmp_basket = Basket(message.chat.id)
+        basket_list.append(tmp_basket)
+
         return (longitude, latitude)
 
     except Exception as err:
@@ -98,23 +105,17 @@ def handle_start(message):
         mp.people_set(message.chat.id, {
             '$first_name': message.from_user.first_name,
             '$last_name': message.from_user.last_name,
-            # '$email': 'john.doe@example.com',
-            # '$phone': '5555555555',
-            # 'Favorite Color': 'red'
         })
         mp.track(message.chat.id, 'Starting')
-            # 'u_id' : message.from_user.id,
-            # 'u_name': message.from_user.first_name + ' ' + message.from_user.last_name)
         markup = types.ReplyKeyboardMarkup()
         add_user_to_db(message)
         markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації 🗺️", request_location=True))
-        bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація що підібрати вірний магазин 🛰️", reply_markup=markup)
+        bot.send_message(message.chat.id, u"Нам потрібна ваша геолокація щоб підібрати вірний магазин 🛰️", reply_markup=markup)
     except Exception as err:
         logger.write_logs(handle_start.__name__, err)
 
-@bot.message_handler(func=lambda message: u'Порівняти ціну на товар 👛' == message.text or u'Додати ще товар ➕' == message.text)
+@bot.message_handler(func=lambda message: u'Дізнатись ціни на товар 👛' == message.text or u'Додати ще товар ➕' == message.text)
 def compare_price(message):
-    markup = types.ReplyKeyboardMarkup()
     # for basket in basket_list:
     #     if basket.chat_id == message.chat.id:
     #         if basket.check_basket():
@@ -123,20 +124,17 @@ def compare_price(message):
     #             bot.send_message(message.chat.id, u"Загрузуть фото штрих-коду", reply_markup=markup)
     # else:
     #     bot.send_message(message.chat.id, u"Загрузуть фото штрих-коду", reply_markup=markup)
-    mp.track(message.chat.id, 'Compare price', {
-        'u_id': message.from_user.id,
-        'u_name': str(message.from_user.first_name) + ' ' + str(message.from_user.last_name),
-        # 'longitude': message.location.longitude,
-        # 'latitude': message.location.latitude
-    })
-    markup.add(types.KeyboardButton(u'Додати ще товар ➕'))
-    markup.add(types.KeyboardButton(u'Порівняти 🔍'))
-    bot.send_message(message.chat.id, u"Завантажте фото штрих-коду 📷", reply_markup=markup)
+    mp.track(message.chat.id, 'Compare price')
+    # markup.add(types.KeyboardButton(u'Додати ще товар ➕'))
+    markup = types.ReplyKeyboardMarkup()
+    # bot.send_message(message.chat.id, u"Сфотографуй штрих-код товару та завантажте його сюди. 📷", reply_markup=markup)
 
 @bot.message_handler(content_types=['photo'])
 def handle_file(message):
     try:
         if message.photo:
+            markup = types.ReplyKeyboardMarkup()
+            markup.add(types.KeyboardButton(u'Дізнатись ціну. 🔍'))
             file_id = message.photo[-1].file_id
             file_info = bot.get_file(file_id)
             file = requests.get(
@@ -146,7 +144,10 @@ def handle_file(message):
 
                 f.write(file.content)
                 decoded_barcode=decode(Image.open(dir_path+'/imgs/%s_%s.png' % (file_id, message.chat.id)))
-                bot.send_message(message.chat.id, u"Оберіть опцію 📱")
+                # for basket in basket_list:
+                #     if basket.chat_id == message.chat.id and len(basket.barcode_list) < 2:
+
+                bot.send_message(message.chat.id, u"Оберіть опцію 📱", reply_markup=markup)
 
                 if not decoded_barcode:
                     bot.send_message(message.chat.id, u'Штрих код не знайдено, спробуйте ще раз 😞')
@@ -158,29 +159,31 @@ def handle_file(message):
                             basket.add(res)
                             basket.add_barcode_to_list(str(int(decoded_barcode[0].data)))
 
-                    tmp_list = [item.chat_id for item in basket_list]
-                    if message.chat.id not in tmp_list:
-                        tmp_basket = Basket(message.chat.id)
-                        tmp_basket.counter += 1
-                        tmp_basket.add(res)
-                        tmp_basket.add_barcode_to_list(str(int(decoded_barcode[0].data)))
-                        basket_list.append(tmp_basket)
+                    # tmp_list = [item.chat_id for item in basket_list]
+                    # if message.chat.id not in tmp_list:
+                    #     tmp_basket = Basket(message.chat.id)
+                    #     tmp_basket.counter += 1
+                    #     tmp_basket.add(res)
+                    #     tmp_basket.add_barcode_to_list(str(int(decoded_barcode[0].data)))
+                    #     basket_list.append(tmp_basket)
                     # time.sleep(5)
 
                     # print(basket_list)
-                    mp.track(message.chat.id, 'Handle file')
+                    mp.track(message.chat.id, 'Handle file', {
+                        'barcode' : str(int(decoded_barcode[0].data))
+                    })
                     # bot.send_message(message.chat.id, u"Оберіть Опцію")
             os.remove(dir_path+'/imgs/%s_%s.png' % (file_id, message.chat.id))
     except Exception as err:
         logger.write_logs(handle_file.__name__, err)
 
-@bot.message_handler(func=lambda message: u'Порівняти 🔍' == message.text)
+@bot.message_handler(func=lambda message: u'Дізнатись ціну. 🔍' == message.text)
 def compare_price(message):
     markup = types.ReplyKeyboardMarkup()
 
     # print(basket_list)
-
-    markup.add(types.KeyboardButton(u'Порівняти ціну на товар 👛'))
+    markup = types.ReplyKeyboardRemove(selective=False)
+    # markup.add(types.KeyboardButton(u'Дізнатись ціни на товар 👛'))
     bot.send_message(message.chat.id, u"Очікуйте результату 🕰️", reply_markup=markup)
     time.sleep(5)
 
@@ -205,17 +208,27 @@ def compare_price(message):
 
                 # Add extra inline markup with id as result_id
                 bot.send_message(message.chat.id, result, reply_markup=get_update_markup(r_id))
-                basket_list.remove(item)
+                # basket_list.remove(item)
+                item.clear_basket()
+                mp.track(message.chat.id, 'compare', {
+                    'barcode': result
+                })
+                markup = types.ReplyKeyboardRemove(selective=False)
+                # markup.add(types.KeyboardButton(u'Дізнатись ціни на товар 👛'))
+                bot.send_message(message.chat.id, u"Сфотографуй штрих-код товару та завантажте його сюди. 📷",
+                                 reply_markup=markup)
+
             except:
                 markup = types.ReplyKeyboardMarkup()
                 add_user_to_db(message)
                 markup.add(types.KeyboardButton(text=u"Дати доступ до геолокації 🗺️", request_location=True))
-                bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація що підібрати вірний магазин 🛰️", reply_markup=markup)
+                bot.send_message(message.chat.id, u"Нам потрібена ваша геолокація щоб підібрати вірний магазин 🛰️", reply_markup=markup)
 
             # print(r_id)
 
             # print(r_id)
             # print(get_user_results(message))
+
 while True:
     bot.polling(none_stop=True)
 

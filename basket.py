@@ -82,4 +82,5 @@ class Basket:
         return res_str
     def clear_basket(self):
         self.basket_list = []
+        self.barcode_list = []
 
