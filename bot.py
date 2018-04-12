@@ -91,8 +91,11 @@ def handle_location(message):
             'longitude': message.location.longitude,
             'latitude': message.location.latitude
         })
-        tmp_basket = Basket(message.chat.id)
-        basket_list.append(tmp_basket)
+
+        basket_list_chat_id = [item.chat_id for item in basket_list]
+        if message.chat.id not in basket_list_chat_id:
+            tmp_basket = Basket(message.chat.id)
+            basket_list.append(tmp_basket)
 
         return (longitude, latitude)
 
