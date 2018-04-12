@@ -136,8 +136,11 @@ def compare_price(message):
 def handle_file(message):
     try:
         if message.photo:
+
             markup = types.ReplyKeyboardMarkup()
-            markup.add(types.KeyboardButton(u'Дізнатись ціну. 🔍'))
+            bot.send_message(message.chat.id, u"Очікуйте результату 🕰️", reply_markup=markup)
+
+            # markup.add(types.KeyboardButton(u'Дізнатись ціну. 🔍'))
             file_id = message.photo[-1].file_id
             file_info = bot.get_file(file_id)
             file = requests.get(
@@ -150,7 +153,7 @@ def handle_file(message):
                 # for basket in basket_list:
                 #     if basket.chat_id == message.chat.id and len(basket.barcode_list) < 2:
 
-                bot.send_message(message.chat.id, u"Оберіть опцію 📱", reply_markup=markup)
+                # bot.send_message(message.chat.id, u"Оберіть опцію 📱", reply_markup=markup)
 
                 if not decoded_barcode:
                     bot.send_message(message.chat.id, u'Штрих код не знайдено, спробуйте ще раз 😞')
@@ -177,17 +180,17 @@ def handle_file(message):
                     })
                     # bot.send_message(message.chat.id, u"Оберіть Опцію")
             os.remove(dir_path+'/imgs/%s_%s.png' % (file_id, message.chat.id))
+            compare_price(message)
     except Exception as err:
         logger.write_logs(handle_file.__name__, err)
 
-@bot.message_handler(func=lambda message: u'Дізнатись ціну. 🔍' == message.text)
+# @bot.message_handler(func=lambda message: u'Дізнатись ціну. 🔍' == message.text)
 def compare_price(message):
     markup = types.ReplyKeyboardMarkup()
 
     # print(basket_list)
     markup = types.ReplyKeyboardRemove(selective=False)
     # markup.add(types.KeyboardButton(u'Дізнатись ціни на товар 👛'))
-    bot.send_message(message.chat.id, u"Очікуйте результату 🕰️", reply_markup=markup)
     time.sleep(5)
 
     # print(basket_list)
