@@ -6,6 +6,7 @@ class Basket:
         self.chat_id = chat_id
         self.counter = 0
         self.barcode_list = []
+        self.listex_list = []
 
     def incr_counter(self):
         self.counter += 1
@@ -14,7 +15,8 @@ class Basket:
         self.barcode_list.append(barcode)
     def add(self, item):
         self.basket_list.append(item)
-
+    def add_listex_obj(self, listex_obj):
+        self.listex_list.append(listex_obj)
     def __str__(self):
         return str(self.basket_list)
 
